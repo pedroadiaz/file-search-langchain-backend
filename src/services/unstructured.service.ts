@@ -1,0 +1,235 @@
+import {
+  DirectoryLoader,
+  UnknownHandling,
+  LoadersMapping,
+} from "langchain/document_loaders/fs/directory";
+import { Document } from "langchain/document";
+import { BaseDocumentLoader } from "./base.loader";
+import FormData from 'form-data';
+import { Blob } from "node:buffer";
+import axios, { AxiosRequestConfig } from 'axios';
+import { readFile } from 'fs/promises';
+import { basename } from "node:path";
+
+const UNSTRUCTURED_API_FILETYPES = [
+  ".txt",
+  ".text",
+  ".pdf",
+  ".docx",
+  ".doc",
+  ".jpg",
+  ".jpeg",
+  ".eml",
+  ".html",
+  ".htm",
+  ".md",
+  ".pptx",
+  ".ppt",
+  ".msg",
+  ".rtf",
+  ".xlsx",
+  ".xls",
+  ".odt",
+  ".epub",
+];
+
+type Element = {
+  type: string;
+  text: string;
+  // this is purposefully loosely typed
+  metadata: {
+    [key: string]: unknown;
+  };
+};
+
+export type UnstructuredLoaderStrategy =
+  | "hi_res"
+  | "fast"
+  | "ocr_only"
+  | "auto";
+
+type StringWithAutocomplete<T> = T | (string & Record<never, never>);
+
+export type UnstructuredLoaderOptions = {
+  apiKey?: string;
+  apiUrl?: string;
+  strategy?: StringWithAutocomplete<UnstructuredLoaderStrategy>;
+  encoding?: string;
+  ocrLanguages?: Array<string>;
+  coordinates?: boolean;
+  pdfInferTableStructure?: boolean;
+  xmlKeepTags?: boolean;
+};
+
+type UnstructuredDirectoryLoaderOptions = UnstructuredLoaderOptions & {
+  recursive?: boolean;
+  unknown?: UnknownHandling;
+};
+
+export class UnstructuredLoader extends BaseDocumentLoader {
+  public filePath: string;
+
+  private apiUrl = "https://api.unstructured.io/general/v0/general";
+
+  private apiKey?: string;
+
+  private strategy: StringWithAutocomplete<UnstructuredLoaderStrategy> =
+    "hi_res";
+
+  private encoding?: string;
+
+  private ocrLanguages: Array<string> = [];
+
+  private coordinates?: boolean;
+
+  private pdfInferTableStructure?: boolean;
+
+  private xmlKeepTags?: boolean;
+
+  constructor(
+    filePathOrLegacyApiUrl: string,
+    optionsOrLegacyFilePath: UnstructuredLoaderOptions | string = {}
+  ) {
+    super();
+
+    // Temporary shim to avoid breaking existing users
+    // Remove when API keys are enforced by Unstructured and existing code will break anyway
+    const isLegacySyntax = typeof optionsOrLegacyFilePath === "string";
+    if (isLegacySyntax) {
+      this.filePath = optionsOrLegacyFilePath;
+      this.apiUrl = filePathOrLegacyApiUrl;
+    } else {
+      this.filePath = filePathOrLegacyApiUrl;
+      const options = optionsOrLegacyFilePath;
+      this.apiKey = options.apiKey;
+      this.apiUrl = options.apiUrl ?? this.apiUrl;
+      this.strategy = options.strategy ?? this.strategy;
+      this.encoding = options.encoding;
+      this.ocrLanguages = options.ocrLanguages ?? this.ocrLanguages;
+      this.coordinates = options.coordinates;
+      this.pdfInferTableStructure = options.pdfInferTableStructure;
+      this.xmlKeepTags = options.xmlKeepTags;
+    }
+  }
+
+  async _partition() {
+    const buffer = await readFile(this.filePath);
+    const fileName = basename(this.filePath);
+
+    // I'm aware this reads the file into memory first, but we have lots of work
+    // to do on then consuming Documents in a streaming fashion anyway, so not
+    // worried about this for now.
+    const formData = new FormData();
+    formData.append("files", buffer, fileName);
+    formData.append("strategy", this.strategy);
+    this.ocrLanguages.forEach((language) => {
+      formData.append("ocr_languages", language);
+    });
+    if (this.encoding) {
+      formData.append("encoding", this.encoding);
+    }
+    if (this.coordinates === true) {
+      formData.append("coordinates", "true");
+    }
+    if (this.pdfInferTableStructure === true) {
+      formData.append("pdf_infer_table_structure", "true");
+    }
+    if (this.xmlKeepTags === true) {
+      formData.append("xml_keep_tags", "true");
+    }
+
+    const config: AxiosRequestConfig = {
+      headers:{
+        "UNSTRUCTURED-API-KEY": this.apiKey ?? "",
+        "Accept": "application/json",
+        ...formData.getHeaders()
+      },  
+    }
+    
+    try {
+      const response = await axios.postForm(this.apiUrl, 
+        formData, 
+        config
+      );
+  
+      console.log("unstructured response: ", response);
+      if (response.status !== 200) {
+        throw new Error(
+          `Failed to partition file ${this.filePath} with error ${
+            response.status
+          } and message ${await response.data}`
+        );
+      }
+  
+      const elements = await response.data;
+      if (!Array.isArray(elements)) {
+        throw new Error(
+          `Expected partitioning request to return an array, but got ${elements}`
+        );
+      }
+      return elements.filter((el) => typeof el.text === "string") as Element[];
+    } catch (error) {
+      console.log("axios threw an error: ", error);
+      throw error;
+    }
+
+  }
+
+  async load(): Promise<Document[]> {
+    const elements = await this._partition();
+
+    const documents: Document[] = [];
+    for (const element of elements) {
+      const { metadata, text } = element;
+      if (typeof text === "string") {
+        documents.push(
+          new Document({
+            pageContent: text,
+            metadata: {
+              ...metadata,
+              category: element.type,
+            },
+          })
+        );
+      }
+    }
+
+    return documents;
+  }
+}
+
+export class UnstructuredDirectoryLoader extends DirectoryLoader {
+  constructor(
+    directoryPathOrLegacyApiUrl: string,
+    optionsOrLegacyDirectoryPath: UnstructuredDirectoryLoaderOptions | string,
+    legacyOptionRecursive = true,
+    legacyOptionUnknown: UnknownHandling = UnknownHandling.Warn
+  ) {
+    let directoryPath;
+    let options: UnstructuredDirectoryLoaderOptions;
+    // Temporary shim to avoid breaking existing users
+    // Remove when API keys are enforced by Unstructured and existing code will break anyway
+    const isLegacySyntax = typeof optionsOrLegacyDirectoryPath === "string";
+    if (isLegacySyntax) {
+      directoryPath = optionsOrLegacyDirectoryPath;
+      options = {
+        apiUrl: directoryPathOrLegacyApiUrl,
+        recursive: legacyOptionRecursive,
+        unknown: legacyOptionUnknown,
+      };
+    } else {
+      directoryPath = directoryPathOrLegacyApiUrl;
+      options = optionsOrLegacyDirectoryPath;
+    }
+    const loader = (p: string) => new UnstructuredLoader(p, options);
+    const loaders = UNSTRUCTURED_API_FILETYPES.reduce(
+      (loadersObject: LoadersMapping, filetype: string) => {
+        // eslint-disable-next-line no-param-reassign
+        loadersObject[filetype] = loader;
+        return loadersObject;
+      },
+      {}
+    );
+    super(directoryPath, loaders, options.recursive, options.unknown);
+  }
+}
