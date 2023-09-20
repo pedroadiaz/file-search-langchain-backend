@@ -35,5 +35,39 @@ export const processFilesFunctions = {
                 }
             }
         ]
+    },
+    convertAudioToText: {
+        handler: './src/functions/processFiles/convertAudioToText.handler',
+        timeout: 120,
+        events: [
+            { 
+                s3: {
+                    bucket: "file-search-bucket-${opt:stage}",
+                    event: "s3:ObjectCreated:*",
+                    rules: [
+                        {
+                            suffix: ".mp3"
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    processTextFile: {
+        handler: './src/functions/processFiles/processTextFile.handler',
+        timeout: 120,
+        events: [
+            { 
+                s3: {
+                    bucket: "file-search-bucket-${opt:stage}",
+                    event: "s3:ObjectCreated:*",
+                    rules: [
+                        {
+                            suffix: ".txt"
+                        }
+                    ]
+                }
+            }
+        ]
     }
 }

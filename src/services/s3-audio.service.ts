@@ -5,7 +5,7 @@ import { Readable } from "node:stream";
 import { S3Client, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
 import { BaseDocumentLoader } from "./base.loader";
 import { UnstructuredLoader as UnstructuredLoaderDefault, UnstructuredLoaderOptions } from "./unstructured.service";
-import { PDFLoader  } from 'langchain/document_loaders/fs/pdf'
+import { OpenAIWhisperAudio  } from 'langchain/document_loaders/fs/openai_whisper_audio'
 
 export type S3Config = S3ClientConfig & {
   /** @deprecated Use the credentials object instead */
@@ -29,7 +29,7 @@ export interface S3LoaderParams {
   UnstructuredLoader?: typeof UnstructuredLoaderDefault;
 }
 
-export class S3Loader extends BaseDocumentLoader {
+export class S3AudioLoader extends BaseDocumentLoader {
   private bucket: string;
 
   private key: string;
@@ -105,21 +105,19 @@ export class S3Loader extends BaseDocumentLoader {
       );
     }
     try {
-      const pdfLoader = new PDFLoader(
-        filePath
-      );
+      const audioLoader = new OpenAIWhisperAudio(filePath);
 
-      const docs = await pdfLoader.load();
+      console.log("file path: ", filePath);
+      console.log("initialized audio loader");
 
-      docs.map((doc, index) => {
-        doc.metadata["page_number"] = index + 1;
-        doc.metadata["filename"] = this.key.split("/")[1]
-      })
+      const docs = await audioLoader.load();
+
+      console.log("loaded file");
 
       return docs;
     } catch {
       throw new Error(
-        `Failed to load file ${filePath} using pdf loader.`
+        `Failed to load file ${filePath} using audio loader.`
       );
     }
   }

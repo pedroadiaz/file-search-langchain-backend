@@ -5,7 +5,7 @@ import { Readable } from "node:stream";
 import { S3Client, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
 import { BaseDocumentLoader } from "./base.loader";
 import { UnstructuredLoader as UnstructuredLoaderDefault, UnstructuredLoaderOptions } from "./unstructured.service";
-import { PDFLoader  } from 'langchain/document_loaders/fs/pdf'
+import { TextLoader  } from 'langchain/document_loaders/fs/text'
 
 export type S3Config = S3ClientConfig & {
   /** @deprecated Use the credentials object instead */
@@ -29,7 +29,7 @@ export interface S3LoaderParams {
   UnstructuredLoader?: typeof UnstructuredLoaderDefault;
 }
 
-export class S3Loader extends BaseDocumentLoader {
+export class S3TextLoader extends BaseDocumentLoader {
   private bucket: string;
 
   private key: string;
@@ -105,11 +105,11 @@ export class S3Loader extends BaseDocumentLoader {
       );
     }
     try {
-      const pdfLoader = new PDFLoader(
+      const textLoader = new TextLoader(
         filePath
       );
 
-      const docs = await pdfLoader.load();
+      const docs = await textLoader.load();
 
       docs.map((doc, index) => {
         doc.metadata["page_number"] = index + 1;

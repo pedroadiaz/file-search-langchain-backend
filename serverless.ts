@@ -1,6 +1,7 @@
 import type { AWS } from '@serverless/typescript';
 import { queryFunctions } from '@functions/query/functions.config';
 import { processFilesFunctions } from '@functions/processFiles/functions.config';
+import { adminFunctions } from '@functions/admin/functions.config';
 
 const serverlessConfiguration: AWS = {
   service: 'file-search-langchain-backend',
@@ -32,7 +33,8 @@ const serverlessConfiguration: AWS = {
   // import the function via paths
   functions: { 
     ...queryFunctions,
-    ...processFilesFunctions
+    ...processFilesFunctions,
+    ...adminFunctions
   },
   package: { individually: true },
   custom: {

@@ -3,7 +3,7 @@ import { PineconeClient, CreateRequest } from "@pinecone-database/pinecone";
 import { IVectorStoreService } from "./interfaces/vectorStore.service.interface";
 import { Document } from "langchain/dist/document";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
-import { QueryOperationRequest } from "@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch";
+import { DeleteOperationRequest, QueryOperationRequest } from "@pinecone-database/pinecone/dist/pinecone-generated-ts-fetch";
 
 export class PineConeService implements IVectorStoreService {
     constructor() {
@@ -66,5 +66,30 @@ export class PineConeService implements IVectorStoreService {
         const response = await client.Index(indexName).query(queryRequest);
 
         return response.matches;
+    }
+
+    async deleteClassData(indexName: string, classId: string) : Promise<boolean> {
+        const client = new PineconeClient();
+        await client.init({
+            apiKey: process.env.PINECONE_AI_API_KEY,
+            environment: process.env.PINECONE_ENVIRONMENT
+        });
+
+        const deleteOperationRequest: DeleteOperationRequest = {
+            deleteRequest: 
+            {
+                namespace: classId,
+                deleteAll: true
+            }
+        };
+
+        try {
+            const response = await client.Index(indexName)._delete(deleteOperationRequest);
+            return true;
+        } catch (error) {
+            console.log(error);
+        }
+        
+        return false;
     }
 }

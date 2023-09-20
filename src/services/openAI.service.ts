@@ -1,10 +1,7 @@
 import axios from 'axios';
-import { OpenAI } from 'langchain';
 
 export class OpenAIService {
     async getEmbeddings(prompt: string) : Promise<number[]> {
-        const openai = new OpenAI()
-
         const embeddingsURL = "https://api.openai.com/v1/embeddings";
         const apiKey = process.env.OPENAI_API_KEY;
         const headers = {
