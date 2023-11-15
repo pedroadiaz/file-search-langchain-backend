@@ -22,7 +22,8 @@ const serverlessConfiguration: AWS = {
       {
         Effect: "Allow",
         Action: [
-          "s3:*"
+          "s3:*",
+          "bedrock:*"
         ],
         Resource: [
           '*',

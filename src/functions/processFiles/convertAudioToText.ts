@@ -18,32 +18,24 @@ export const handler = async (event: S3Event, context: Context) => {
         });
 
         const splitter = new RecursiveCharacterTextSplitter({
-            chunkSize: 1000,
+            chunkSize: 500,
             chunkOverlap: 0
         });
 
         const doc = await loader.load();
 
-        try {
-            console.log("number of documents: ", doc.length);
-            const max = doc.length < 20 ? doc.length : 20;
-            if (doc.length > 0) {
-                for (let i=0;i<max;i++) {
-                    console.log(`content for index ${i}`, doc[i]?.pageContent);
-                }
-            }
-        } catch (error) {
-            console.log(error);
-        }
-
         const newDocs = await splitter.splitDocuments(doc);
 
         try {
-            console.log("number of documents: ", newDocs.length);
-            const max = doc.length < 20 ? newDocs.length : 20;
             if (newDocs.length > 0) {
-                for (let i=0;i<max;i++) {
-                    console.log(`content for index ${i}`, newDocs[i]?.pageContent);
+                for (let i=0;i<newDocs.length;i++) {
+                    newDocs[i].metadata = {
+                        fileName: key.split("/")?.[1]
+                    }
+                    if (i<20){
+                        console.log(`content for index ${i}`, newDocs[i]?.pageContent);
+                        console.log(`metadata for index ${i}`, newDocs[i]?.metadata);
+                    }
                 }
             }
         } catch (error) {
