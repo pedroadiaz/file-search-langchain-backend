@@ -1,24 +1,4 @@
 export const processFilesFunctions = {
-    createIndex: {
-        handler: './src/functions/processFiles/createPineconeIndex.handler',
-        events: [
-            {
-                http: {
-                    method: 'post',
-                    path: 'pinecone/createIndex',
-                    cors: {
-                      origin: "*",
-                      headers: [
-                        "Accept",
-                        "Content-Type",
-                        "Content-Length",
-                        "Authorization"
-                      ]
-                    }
-                }
-            }
-        ]
-    },
     convertPDFToText: {
         handler: './src/functions/processFiles/convertPDFToText.handler',
         timeout: 120,
@@ -69,5 +49,45 @@ export const processFilesFunctions = {
                 }
             }
         ]
-    }
+    },
+    convertUrlLambda: {
+      handler: './src/functions/processFiles/convertUrlToText.handler',
+      events: [
+        {
+          http: {
+            method: 'post',
+            path: 'convertUrlLambda',
+            cors: {
+              origin: "*",
+              headers: [
+                "Accept",
+                "Content-Type",
+                "Content-Length",
+                "Authorization"
+              ]
+            }
+          },
+        },
+      ]
+    },
+    convertYoutubeLambda: {
+      handler: './src/functions/processFiles/convertYouTubeToText.handler',
+      events: [
+        {
+          http: {
+            method: 'post',
+            path: 'youtube',
+            cors: {
+              origin: "*",
+              headers: [
+                "Accept",
+                "Content-Type",
+                "Content-Length",
+                "Authorization"
+              ]
+            }
+          },
+        },
+      ]
+    },
 }

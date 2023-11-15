@@ -4,8 +4,9 @@ import * as os from "node:os";
 import { Readable } from "node:stream";
 import { S3Client, GetObjectCommand, S3ClientConfig } from "@aws-sdk/client-s3";
 import { BaseDocumentLoader } from "./base.loader";
-import { UnstructuredLoader as UnstructuredLoaderDefault, UnstructuredLoaderOptions } from "./unstructured.service";
+import { UnstructuredLoader as UnstructuredLoaderDefault } from "./unstructured.service";
 import { TextLoader  } from 'langchain/document_loaders/fs/text'
+import { S3LoaderParams } from "./s3.service";
 
 export type S3Config = S3ClientConfig & {
   /** @deprecated Use the credentials object instead */
@@ -13,21 +14,6 @@ export type S3Config = S3ClientConfig & {
   /** @deprecated Use the credentials object instead */
   secretAccessKey?: string;
 };
-
-export interface S3LoaderParams {
-  bucket: string;
-  key: string;
-  unstructuredAPIURL: string;
-  unstructuredAPIKey: string;
-  s3Config?: S3Config & {
-    /** @deprecated Use the credentials object instead */
-    accessKeyId?: string;
-    /** @deprecated Use the credentials object instead */
-    secretAccessKey?: string;
-  };
-  fs?: typeof fsDefault;
-  UnstructuredLoader?: typeof UnstructuredLoaderDefault;
-}
 
 export class S3TextLoader extends BaseDocumentLoader {
   private bucket: string;
