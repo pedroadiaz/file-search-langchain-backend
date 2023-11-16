@@ -41,6 +41,7 @@ export const queryFunctions = {
     },
     qanda: {
         handler: './src/functions/query/question-answer.handler',
+        timeout: 15,
         events: [
             {
                 http: {

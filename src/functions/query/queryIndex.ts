@@ -8,7 +8,11 @@ export const handler = async (event: APIGatewayProxyEvent, context: Context) : P
     const service = new PineConeService();
     const embeddingService = new OpenAIService();
     const embeddings = await embeddingService.getEmbeddings(body.prompt);
-    const result = await service.queryIndex(process.env.PINECONE_INDEX_NAME, body.classId, embeddings);
+    let topK = 5;
+    if (body.topK && Number.parseInt(body.topK)) {
+        topK = Number.parseInt(body.topK);
+    }
+    const result = await service.queryIndex(process.env.PINECONE_INDEX_NAME, body.classId, embeddings, topK);
 
     return formatJSONResponse({
         results: result
